@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eureka Poster 2025 - Danh sách đề tài theo lĩnh vực</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      margin: 40px;
+    }
+
+    h2 {
+      color: #1e3a8a;
+      margin-bottom: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      background: #2563eb;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .tab:hover {
+      background: #1e40af;
+    }
+
+    .tab.active {
+      background: #f59e0b;
+    }
+
+    #loading {
+      font-size: 18px;
+      color: #374151;
+      display: none;
+      margin-bottom: 10px;
+    }
+
+    #progress {
+      color: #6b7280;
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: none;
+    }
+
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #2563eb;
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f3f4f6;
+    }
+
+    .highlight {
+      background: #fef3c7 !important;
+    }
+  </style>
+</head>
+<body>
+  <h2>Danh sách đề tài - Eureka Poster 2025</h2>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <div id="loading">⏳ Đang tải dữ liệu...</div>
+  <div id="progress"></div>
+
+  <!-- Bảng kết quả -->
+  <table id="topicsTable">
+    <thead>
+      <tr>
+        <th>Hạng</th>
+        <th>Mã đề tài</th>
+        <th>Tên đề tài</th>
+        <th>Tác giả</th>
+        <th>Trường</th>
+        <th>Số phiếu</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const fields = [
+      { code: "CNTP", name: "Công nghệ Thực phẩm" },
+      { code: "CNTT", name: "Công nghệ Thông tin" },
+      { code: "HCPL", name: "Hành chính Pháp lý" },
+      { code: "HH", name: "Hóa học" },
+      { code: "KHGD", name: "Khoa học Giáo dục" },
+      { code: "KHNN", name: "Khoa học Nông nghiệp" },
+      { code: "KHXH", name: "Khoa học Xã hội" },
+      { code: "KHYD", name: "Khoa học Y Dược" },
+      { code: "KT", name: "Kinh tế" },
+      { code: "KTCN", name: "Kỹ thuật Công nghệ" },
+      { code: "QHKT&XD", name: "Quy hoạch, Kiến trúc & Xây dựng" },
+      { code: "SH", name: "Sinh học" },
+      { code: "TNVMT", name: "Tài nguyên & Môi trường" },
+      { code: "VH-NT", name: "Văn hóa - Nghệ thuật" },
+      { code: "VL", name: "Vật lý" }
+    ];
+
+    const tabs = document.getElementById("tabs");
+    const loading = document.getElementById("loading");
+    const progress = document.getElementById("progress");
+    const table = document.getElementById("topicsTable");
+    const tbody = table.querySelector("tbody");
+
+    // Tạo các tab
+    fields.forEach(f => {
+      const btn = document.createElement("button");
+      btn.textContent = f.name;
+      btn.className = "tab";
+      btn.dataset.code = f.code;
+      btn.addEventListener("click", () => loadField(f));
+      tabs.appendChild(btn);
+    });
+
+    async function loadField(field) {
+      // Reset UI
+      [...tabs.children].forEach(b => b.classList.remove("active"));
+      event.target.classList.add("active");
+      table.style.display = "none";
+      tbody.innerHTML = "";
+      loading.style.display = "block";
+      progress.textContent = `Đang tải ${field.name}...`;
+
+      try {
+        // Gọi trang đầu tiên để biết totalPages
+        const firstResp = await fetch(`http://localhost:3000/proxy/topics/${field.code}/0`);
+        const firstData = await firstResp.json();
+        const totalPages = firstData.totalPages ?? 1;
+
+        let allTopics = [...firstData.topics];
+        progress.textContent = `Trang 1/${totalPages}...`;
+
+        // Lặp qua các trang còn lại
+        for (let page = 1; page < totalPages; page++) {
+          progress.textContent = `Trang ${page + 1}/${totalPages}...`;
+          const resp = await fetch(`http://localhost:3000/proxy/topics/${field.code}/${page}`);
+          const data = await resp.json();
+          allTopics.push(...data.topics);
+        }
+
+        // Sort giảm dần theo số phiếu
+        allTopics.sort((a, b) => b.votes - a.votes);
+
+        // Render bảng
+        loading.style.display = "none";
+        table.style.display = "table";
+        progress.textContent = `✅ ${field.name}: ${allTopics.length} đề tài.`;
+
+        allTopics.forEach((topic, index) => {
+          const tr = document.createElement("tr");
+          if (index === 0) tr.classList.add("highlight");
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${topic.id}</td>
+            <td>${topic.title}</td>
+            <td>${topic.author}</td>
+            <td>${topic.details?.School || ""}</td>
+            <td>${topic.votes}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        loading.style.display = "none";
+        progress.textContent = "❌ Lỗi: " + err.message;
+      }
+    }
+
+    // Tự load tab đầu tiên khi mở trang
+    document.querySelector(".tab").click();
+  </script>
+</body>
+</html>
