@@ -153,7 +153,7 @@
 
       try {
         // Gọi trang đầu tiên để biết totalPages
-        const firstResp = await fetch(`http://localhost:3000/proxy/topics/${field.code}/0`);
+        const firstResp = await fetch(`https://read-topics.onrender.com/proxy/topics/${field.code}/0`);
         const firstData = await firstResp.json();
         const totalPages = firstData.totalPages ?? 1;
 
@@ -163,7 +163,7 @@
         // Lặp qua các trang còn lại
         for (let page = 1; page < totalPages; page++) {
           progress.textContent = `Trang ${page + 1}/${totalPages}...`;
-          const resp = await fetch(`http://localhost:3000/proxy/topics/${field.code}/${page}`);
+          const resp = await fetch(`https://read-topics.onrender.com/proxy/topics/${field.code}/${page}`);
           const data = await resp.json();
           allTopics.push(...data.topics);
         }
